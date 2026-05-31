@@ -1,0 +1,6 @@
+{
+  "jsPlugins": ["../../src/index.ts"],
+  "rules": {
+    "oxfmt/format": "error"
+  }
+}
