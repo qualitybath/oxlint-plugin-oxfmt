@@ -31,6 +31,25 @@ const formatSync = createSyncFn<(fileName: string, source: string, args: Resolve
 
 const { INSERT, DELETE, REPLACE } = generateDifferences;
 
+// Diff text comes from the linted file and is printed verbatim by oxlint's
+// reporters, so terminal/annotation control characters must never reach the
+// message: C0 controls, DEL, C1 controls, and Unicode bidi formatting controls.
+// oxlint-disable-next-line no-control-regex
+const UNSAFE_MESSAGE_CHARS = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+const MAX_HUNK_CHARS = 80;
+const ELLIPSIS = '…';
+
+function toMessageText(text: string): string {
+  const safe = showInvisibles(text).replace(UNSAFE_MESSAGE_CHARS, '');
+  if (safe.length <= MAX_HUNK_CHARS) return safe;
+  let truncated = '';
+  for (const char of safe) {
+    if (truncated.length + char.length > MAX_HUNK_CHARS - ELLIPSIS.length) break;
+    truncated += char;
+  }
+  return truncated + ELLIPSIS;
+}
+
 const rule = defineRule({
   meta: {
     type: 'layout',
@@ -85,8 +104,8 @@ const rule = defineRule({
           context.report({
             messageId: difference.operation,
             data: {
-              insertText: showInvisibles(insertText),
-              deleteText: showInvisibles(deleteText),
+              insertText: toMessageText(insertText),
+              deleteText: toMessageText(deleteText),
             },
             loc: {
               start: sourceCode.getLocFromIndex(range[0]),
